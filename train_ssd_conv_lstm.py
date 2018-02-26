@@ -248,7 +248,7 @@ def main():
         print('Train SSD on', train_dataset.name)
 
         ########## train ###########
-        train(train_data_loader, net, criterion, optimizer, scheduler, epoch, num_gpu)
+        # train(train_data_loader, net, criterion, optimizer, scheduler, epoch, num_gpu)
 
         #### log lr ###
         # scheduler.step()
@@ -469,8 +469,7 @@ def validate(args, net, val_data_loader, val_dataset, epoch, iou_thresh=0.5, num
 
         loc_data = output[0]
         conf_preds = output[1]
-
-        prior_data = output[4]
+        prior_data = output[2]
         prior_data = prior_data[:loc_data.size(1), :]
 
         if print_time and val_itr%val_step == 0:
