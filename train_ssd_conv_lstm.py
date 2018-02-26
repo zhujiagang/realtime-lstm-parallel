@@ -39,7 +39,7 @@ def str2bool(v):
 
 day = (time.strftime('%m-%d', time.localtime(time.time())))
 print(day)
-relative_path = '/home2/lin_li/zjg_code/'
+relative_path = '/data4/lilin/my_code/'
 
 def main():
     global my_dict, keys, k_len, arr, xxx, args, log_file, best_prec1
@@ -58,7 +58,7 @@ def main():
     parser.add_argument('--man_seed', default=123, type=int, help='manualseed for reproduction')
     parser.add_argument('--cuda', default=True, type=str2bool, help='Use cuda to train model')
     parser.add_argument('--ngpu', default=1, type=str2bool, help='Use cuda to train model')
-    parser.add_argument('--lr', '--learning-rate', default=0.001, type=float, help='initial learning rate')
+    parser.add_argument('--lr', '--learning-rate', default=0.0005, type=float, help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
     parser.add_argument('--stepvalues', default='100000000', type=str,
                         help='iter number when learning rate to be dropped')
@@ -77,7 +77,7 @@ def main():
     parser.add_argument('--clip_gradient', default=40, type=float, help='gradients clip')
     parser.add_argument('--resume', default=None, type=str, help='Resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
-    parser.add_argument('--epochs', default=100, type=int, metavar='N',
+    parser.add_argument('--epochs', default=35, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('--eval_freq', default=4, type=int, metavar='N', help='evaluation frequency (default: 5)')
     parser.add_argument('--snapshot_pref', type=str, default="ucf101_vgg16_ssd300_")
@@ -163,7 +163,6 @@ def main():
     # initialize newly added layers' weights with xavier method
     if args.Finetune_SSD is False and args.resume is None:
         print('Initializing weights for extra layers and HEADs...')
-        net.module.clstm.apply(weights_init)
         net.module.clstm.apply(weights_init)
 
         net.module.extras.apply(weights_init)

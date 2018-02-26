@@ -33,7 +33,7 @@ class SSD(nn.Module):
         head: "multibox head" consists of loc and conf conv layers
     """
 
-    def __init__(self, base, extras, clstm, cgru, head, num_classes, use_gru = False):
+    def __init__(self, base, extras, head, num_classes, use_gru = False):
         super(SSD, self).__init__()
 
         self.num_classes = num_classes
@@ -49,16 +49,7 @@ class SSD(nn.Module):
                               [[], [], [], [], [], []]]
         # SSD network
         self.vgg = nn.ModuleList(base)
-        self.clstm = nn.ModuleList(clstm)
-        self.use_gru = use_gru
-        if self.use_gru:
-            self.cgru = nn.ModuleList(cgru)
-            print ("ConvGRU is used")
-        else:
-            print("ConvLSTM is used")
-
-        # if self.use_gru:
-        #     self.hidden_states = []
+        self.clstm = nn.ModuleList([CLSTM(512, 512, 3, stride=1, padding=1)])
 
         # Layer learns to scale the l2 normalized features from conv4_3
         self.L2Norm = L2Norm(512, 20)
@@ -112,7 +103,7 @@ class SSD(nn.Module):
         conf = list()
 
         # apply vgg up to conv4_3 relu
-        for k in range(23):
+        for k in range(21):
             x = self.vgg[k](x)
 
         def convlstm_forward(x, CLSTM, hidden_states, hi):
@@ -353,10 +344,9 @@ def multibox(vgg, extra_layers, cfg, num_classes):
         conf_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                   * num_classes, kernel_size=3, padding=1)]
 
-    clstm = [CLSTM(512, 512, 3, 1)]
-    cgru = [CGRU(512, 512, 3, 1)]
 
-    return vgg, extra_layers, clstm, cgru, (loc_layers, conf_layers)
+
+    return vgg, extra_layers, (loc_layers, conf_layers)
 
 
 base = {
