@@ -98,7 +98,7 @@ def make_lists(rootpath, imgtype, split=1, fulltest=False, videos=None, istrain 
         if not istrain:
             step = ratios[actidx] * 2.0
         else:
-            step = ratios[actidx]
+            step = ratios[actidx] * 2.0
 
         if fulltest:
             step = 1
