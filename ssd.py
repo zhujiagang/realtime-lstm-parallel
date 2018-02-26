@@ -50,7 +50,7 @@ class SSD(nn.Module):
         # SSD network
         self.vgg = nn.ModuleList(base)
         self.clstm = nn.ModuleList([CLSTM(512, 512, 3, stride=1, padding=1)])
-
+        self.use_gru = use_gru
         # Layer learns to scale the l2 normalized features from conv4_3
         self.L2Norm = L2Norm(512, 20)
         self.extras = nn.ModuleList(extras)
