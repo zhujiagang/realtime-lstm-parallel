@@ -11,7 +11,7 @@
 
 import os
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--ngpu', default=1, type=str2bool, help='Use cuda to train model')
     parser.add_argument('--lr', '--learning-rate', default=0.0005, type=float, help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-    parser.add_argument('--stepvalues', default='100000000', type=str,
+    parser.add_argument('--stepvalues', default='70000,90000', type=str,
                         help='iter number when learning rate to be dropped')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
     parser.add_argument('--gamma', default=0.2, type=float, help='Gamma update for SGD')
@@ -75,11 +75,11 @@ def main():
     parser.add_argument('--nms_thresh', default=0.45, type=float, help='NMS threshold')
     parser.add_argument('--topk', default=50, type=int, help='topk for evaluation')
     parser.add_argument('--clip_gradient', default=40, type=float, help='gradients clip')
-    parser.add_argument('--resume', default=None, type=str, help='Resume from checkpoint')
+    parser.add_argument('--resume', default="/data4/lilin/my_code/realtime/saveucf24/ucf101_CONV-SSD-ucf24-rgb-bs-32-vgg16-lr-00050_train_ssd_conv_lstm_02-27_epoch_0_model_best.pth.tar", type=str, help='Resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
     parser.add_argument('--epochs', default=35, type=int, metavar='N',
                         help='number of total epochs to run')
-    parser.add_argument('--eval_freq', default=4, type=int, metavar='N', help='evaluation frequency (default: 5)')
+    parser.add_argument('--eval_freq', default=2, type=int, metavar='N', help='evaluation frequency (default: 5)')
     parser.add_argument('--snapshot_pref', type=str, default="ucf101_vgg16_ssd300_")
     parser.add_argument('--lr_milestones', default=[-2, -5], type=float, help='initial learning rate')
     parser.add_argument('--arch', type=str, default="VGG16")
@@ -163,8 +163,7 @@ def main():
     # initialize newly added layers' weights with xavier method
     if args.Finetune_SSD is False and args.resume is None:
         print('Initializing weights for extra layers and HEADs...')
-        net.module.clstm.apply(weights_init)
-
+        # net.module.clstm.apply(weights_init)
         net.module.extras.apply(weights_init)
         net.module.loc.apply(weights_init)
         net.module.conf.apply(weights_init)
@@ -248,12 +247,12 @@ def main():
         print('Train SSD on', train_dataset.name)
 
         ########## train ###########
-        # train(train_data_loader, net, criterion, optimizer, scheduler, epoch, num_gpu)
+        train(train_data_loader, net, criterion, optimizer, scheduler, epoch, num_gpu)
 
         #### log lr ###
         # scheduler.step()
         # evaluate on validation set
-        if (epoch + 1) % args.eval_freq == 0 or epoch == args.epochs - 1 or epoch == 0:#
+        if (epoch + 1) % args.eval_freq == 0 or epoch == args.epochs - 1:#
 
             torch.cuda.synchronize()
             tvs = time.perf_counter()

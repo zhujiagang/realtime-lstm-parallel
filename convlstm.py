@@ -20,34 +20,29 @@ class CLSTM_cell(nn.Module):
 
     """
 
-    def __init__(self, input_chans, num_features, filter_size, stride=1, padding = 0):
+    def __init__(self, input_chans, filter_size, num_features):
         super(CLSTM_cell, self).__init__()
 
         self.input_chans = input_chans
         self.filter_size = filter_size
         self.num_features = num_features
-        self.stride = stride
-        self.padding = padding  # in this way the output has the same size
-        self.conv_input = nn.Conv2d(self.input_chans, 4 * self.num_features, self.filter_size, stride=self.stride,
-                              padding=self.padding)
-        self.conv_hidden = nn.Conv2d(self.num_features, 4 * self.num_features, self.filter_size, stride=1,
-                              padding=int((filter_size - 1) / 2))
+        # self.batch_size=batch_size
+        self.padding = int((filter_size - 1) / 2)  # in this way the output has the same size
+        self.conv = nn.Conv2d(self.input_chans + self.num_features, 4 * self.num_features, self.filter_size, 1,
+                              self.padding)
 
     def forward(self, input, hidden_state):
         hidden, c = hidden_state  # hidden and c are images with several channels
         # print 'hidden ',hidden.size()
         # print 'input ',input.size()
-        # combined = torch.cat((input, hidden), 1)  # oncatenate in the channels
+        combined = torch.cat((input, hidden), 1)  # oncatenate in the channels
         # print 'combined',combined.size()
-        A = self.conv_input(input)
-        B = self.conv_hidden(hidden)
-        (ai_i, ai_f, ai_g, ai_o) = torch.split(A, self.num_features, dim=1)  # it should return 4 tensors
-        (ah_i, ah_f, ah_g, ah_o) = torch.split(B, self.num_features, dim=1)
-
-        i = torch.sigmoid(ai_i+ah_i)
-        f = torch.sigmoid(ai_f+ah_f)
-        o = torch.sigmoid(ai_o+ah_o)
-        g = torch.tanh(ai_g+ah_g)
+        A = self.conv(combined)
+        (ai, af, ao, ag) = torch.split(A, self.num_features, dim=1)  # it should return 4 tensors
+        i = torch.sigmoid(ai)
+        f = torch.sigmoid(af)
+        o = torch.sigmoid(ao)
+        g = torch.tanh(ag)
 
         next_c = f * c + i * g
         next_h = o * torch.tanh(next_c)
@@ -55,9 +50,8 @@ class CLSTM_cell(nn.Module):
 
     def init_hidden(self, input):
         feature_size = input.size()[-2:]
-        out_size = int((feature_size[0] -self.filter_size + 2*self.padding)/self.stride + 1)
-        return (Variable(torch.zeros(input.size(0), self.num_features, out_size, out_size)).cuda(),
-                Variable(torch.zeros(input.size(0), self.num_features, out_size, out_size)).cuda())
+        return (Variable(torch.zeros(input.size(0), self.num_features, feature_size[0], feature_size[1])).cuda(),
+                Variable(torch.zeros(input.size(0), self.num_features, feature_size[0], feature_size[1])).cuda())
 
 
 class CLSTM(nn.Module):
@@ -68,22 +62,20 @@ class CLSTM(nn.Module):
 
     """
 
-    def __init__(self, input_chans, num_features, filter_size, stride, padding = 0, num_layers = 1):
+    def __init__(self, input_chans, num_features, filter_size, num_layers):
         super(CLSTM, self).__init__()
 
         self.input_chans = input_chans
         self.filter_size = filter_size
         self.num_features = num_features
         self.num_layers = num_layers
-        self.stride = stride
-        self.padding = padding
         cell_list = []
         cell_list.append(
-            CLSTM_cell(self.input_chans, self.num_features, self.filter_size, self.stride, self.padding).cuda())  # the first
+            CLSTM_cell(self.input_chans, self.filter_size, self.num_features).cuda())  # the first
         # one has a different number of input channels
 
         for idcell in range(1, self.num_layers):
-            cell_list.append(CLSTM_cell(self.num_features, self.num_features, self.filter_size, self.stride, self.padding).cuda())
+            cell_list.append(CLSTM_cell(self.num_features, self.filter_size, self.num_features).cuda())
         self.cell_list = nn.ModuleList(cell_list)
 
     def forward(self, input, hidden_state = None):
