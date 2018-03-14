@@ -112,105 +112,64 @@ class SSD(nn.Module):
         loc = list()
         conf = list()
 
+
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
 
-        def convlstm_forward(x, CLSTM, hidden_states, hi):
+        def convlstm_forward(x, CLSTM):
             len_r = len(reset_group)
             if len_r > 0:
                 yyy = []
                 if reset_group[0][0] > 0:
                     temp_x = x[0:reset_group[0][0]]
                     xx = temp_x.view(-1, temp_x.size(0), temp_x.size(1), temp_x.size(2), temp_x.size(3))
-                    len_hid = len(hidden_states[hi])
-                    if len_hid > 0:
-                        temp = [(Variable(hidden_states[hi][0]).cuda(),
-                                 Variable(hidden_states[hi][1]).cuda())]
-                        xxx = CLSTM(xx, temp)
-                    else:
-                        xxx = CLSTM(xx)
-                    hidden_states[hi] = [xxx[0][0][0].data, xxx[0][0][1].data]
-                    yyy.append(xxx[1].data)
+                    xxx = CLSTM(xx)
+                    yyy.append(xxx[1])
 
                 for item in reset_group:
-                    hidden_states[hi] = []
+                    # print (item)
                     temp_x = x[item[0]:item[1]]
                     xx = temp_x.view(-1, temp_x.size(0), temp_x.size(1), temp_x.size(2), temp_x.size(3))
                     xxx = CLSTM(xx)
-                    hidden_states[hi] = [xxx[0][0][0].data, xxx[0][0][1].data]
-                    yyy.append(xxx[1].data)
+                    yyy.append(xxx[1])
 
-                third_tensor = yyy[0]
-                if len(yyy) > 1:
-                    for yitem in yyy[1:]:
-                        third_tensor = torch.cat((third_tensor, yitem), 0)
-
-                yyyy = Variable(third_tensor).cuda()
-                yyyy = F.relu(yyyy, inplace=True)
-                x = yyyy.view(x.size())
+                yyy = torch.cat(yyy, 0)
+                yyy = F.relu(yyy, inplace=True)
+                x = yyy.view(x.size())
                 return x
             else:
                 xx = x.view(-1, x.size(0), x.size(1), x.size(2), x.size(3))
-                len_hid = len(hidden_states[hi])
-                if len_hid > 0:
-                    temp = [(Variable(hidden_states[hi][0]).cuda(), Variable(hidden_states[hi][1]).cuda())]
-                    xxx = CLSTM(xx, temp)
-                else:
-                    xxx = CLSTM(xx)
-
+                xxx = CLSTM(xx)
                 yyy = xxx[1]
-                hidden_states[hi] = [xxx[0][0][0].data, xxx[0][0][1].data]
-
-                yyyy = F.relu(yyy, inplace=True)
-                x = yyyy.view(x.size())
+                yyy = F.relu(yyy, inplace=True)
+                x = yyy.view(x.size())
                 return x
 
-        def convgru_forward(x, CGRU, hidden_states, hi):
+        def convgru_forward(x, CGRU):
             len_r = len(reset_group)
             if len_r > 0:
                 yyy = []
                 if reset_group[0][0] > 0:
                     temp_x = x[0:reset_group[0][0]]
                     xx = temp_x.view(-1, temp_x.size(0), temp_x.size(1), temp_x.size(2), temp_x.size(3))
-                    len_hid = len(hidden_states[hi])
-                    if len_hid > 0:
-                        temp = [(Variable(hidden_states[hi]).cuda())]
-                        xxx = CGRU(xx, temp)
-                    else:
-                        xxx = CGRU(xx)
-                    hidden_states[hi] = xxx[0][0].data
-                    yyy.append(xxx[1].data)
+                    xxx = CGRU(xx)
+                    yyy.append(xxx[1])
 
                 for item in reset_group:
-                    hidden_states[hi] = []
                     temp_x = x[item[0]:item[1]]
                     xx = temp_x.view(-1, temp_x.size(0), temp_x.size(1), temp_x.size(2), temp_x.size(3))
                     xxx = CGRU(xx)
-                    hidden_states[hi] = xxx[0][0].data
-                    yyy.append(xxx[1].data)
+                    yyy.append(xxx[1])
 
-                third_tensor = yyy[0]
-                if len(yyy) > 1:
-                    for yitem in yyy[1:]:
-                        third_tensor = torch.cat((third_tensor, yitem), 0)
-
-                yyyy = Variable(third_tensor).cuda()
-                yyyy = F.relu(yyyy, inplace=True)
-                x = yyyy.view(x.size())
+                yyy = torch.cat(yyy, 0)
+                yyy = F.relu(yyy, inplace=True)
+                x = yyy.view(x.size())
                 return x
             else:
                 xx = x.view(-1, x.size(0), x.size(1), x.size(2), x.size(3))
-                len_hid = len(hidden_states[hi])
-                if len_hid > 0:
-                    temp = [(Variable(hidden_states[hi]).cuda())]
-                    xxx = CGRU(xx, temp)
-                else:
-                    xxx = CGRU(xx)
-
+                xxx = CGRU(xx)
                 yyy = xxx[1]
-                hidden_states[hi] = xxx[0][0].data
-
                 yyyy = F.relu(yyy, inplace=True)
                 x = yyyy.view(x.size())
                 return x
@@ -218,9 +177,9 @@ class SSD(nn.Module):
         hi = 0
         ##  apply convlstm on conv4_3
         if self.use_gru is False:
-            x = convlstm_forward(x, self.clstm[0], self.hidden_states[last], hi)
+            x = convlstm_forward(x, self.clstm[0])
         else:
-            x = convgru_forward(x, self.cgru[0], self.hidden_states[last], hi)
+            x = convgru_forward(x, self.cgru[0], self.hidden_states, hi)
 
         hi += 1
         s = self.L2Norm(x)
@@ -268,6 +227,8 @@ class SSD(nn.Module):
                   conf.view(conf.size(0), -1, self.num_classes),
                   self.priors)
         return output
+
+
 
     def load_weights(self, base_file):
         other, ext = os.path.splitext(base_file)

@@ -11,7 +11,7 @@
 
 import os
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
+os.environ["CUDA_VISIBLE_DEVICES"] = "6,7"
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -75,7 +75,7 @@ def main():
     parser.add_argument('--nms_thresh', default=0.45, type=float, help='NMS threshold')
     parser.add_argument('--topk', default=50, type=int, help='topk for evaluation')
     parser.add_argument('--clip_gradient', default=40, type=float, help='gradients clip')
-    parser.add_argument('--resume', default="/data4/lilin/my_code/realtime/saveucf24/ucf101_CONV-SSD-ucf24-rgb-bs-32-vgg16-lr-00050_train_ssd_conv_lstm_02-27_epoch_0_model_best.pth.tar", type=str, help='Resume from checkpoint')
+    parser.add_argument('--resume', default=None, type=str, help='Resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
     parser.add_argument('--epochs', default=35, type=int, metavar='N',
                         help='number of total epochs to run')
@@ -163,7 +163,7 @@ def main():
     # initialize newly added layers' weights with xavier method
     if args.Finetune_SSD is False and args.resume is None:
         print('Initializing weights for extra layers and HEADs...')
-        # net.module.clstm.apply(weights_init)
+        net.module.clstm.apply(weights_init)
         net.module.extras.apply(weights_init)
         net.module.loc.apply(weights_init)
         net.module.conf.apply(weights_init)
@@ -173,16 +173,16 @@ def main():
 
     #Set different learning rate to bias layers and set their weight_decay to 0
     for name, param in parameter_dict.items():
-        if name.find('vgg') > -1 and int(name.split('.')[2]) < 23:# :and name.find('cell') <= -1
-            param.requires_grad = False
-            print(name, 'layer parameters will be fixed')
+        # if name.find('vgg') > -1 and int(name.split('.')[2]) < 23:# :and name.find('cell') <= -1
+        #     param.requires_grad = False
+        #     print(name, 'layer parameters will be fixed')
+        # else:
+        if name.find('bias') > -1:
+            print(name, 'layer parameters will be trained @ {}'.format(args.lr*2))
+            params += [{'params': [param], 'lr': args.lr*2, 'weight_decay': 0}]
         else:
-            if name.find('bias') > -1:
-                print(name, 'layer parameters will be trained @ {}'.format(args.lr*2))
-                params += [{'params': [param], 'lr': args.lr*2, 'weight_decay': 0}]
-            else:
-                print(name, 'layer parameters will be trained @ {}'.format(args.lr))
-                params += [{'params':[param], 'lr': args.lr, 'weight_decay':args.weight_decay}]
+            print(name, 'layer parameters will be trained @ {}'.format(args.lr))
+            params += [{'params':[param], 'lr': args.lr, 'weight_decay':args.weight_decay}]
 
     optimizer = optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     criterion = MultiBoxLoss(args.num_classes, 0.5, True, 0, True, 3, 0.5, False, args.cuda)
